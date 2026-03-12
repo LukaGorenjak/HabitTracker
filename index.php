@@ -2,6 +2,20 @@
 session_start();
 
 $isLoggedIn = isset($_SESSION['user_id']);
+$navade = [];
+
+if ($isLoggedIn) {
+    require_once 'konfiguracija/db.php';
+    $stmt = $pdo->prepare("
+        SELECT n.*, k.ime AS kategorija_ime, k.barva AS kategorija_barva
+        FROM navade n
+        LEFT JOIN kategorije k ON n.id_kategorije = k.id_kategorije
+        WHERE n.id_uporabnika = ?
+        ORDER BY n.ustvarjeno DESC
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $navade = $stmt->fetchAll();
+}
 ?>
 
 <!DOCTYPE html>
@@ -10,284 +24,7 @@ $isLoggedIn = isset($_SESSION['user_id']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Habit Flow</title>
-    <link href="https://fonts.googleapis.com/css2?family=Fjalla+One&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
-    
-    <style>
-        /* ===========================================
-           COMMON STYLES
-           ========================================= */
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Fjalla One', Arial, sans-serif;
-        }
-
-        /* ===========================================
-           STYLES FOR NON-LOGGED IN (LANDING PAGE)
-           ========================================= */
-        .landing-body {
-            min-height: 100vh;
-            background: url('ostalo/slike/kendal-hnysCJrPpkc-unsplash.jpg') no-repeat center center fixed;
-            background-size: cover;
-            background-color: #0a0f0d;
-            color: #fff;
-        }
-        .landing-nav {
-            display: flex;
-            justify-content: center;
-            gap: 50px;
-            margin-top: 32px;
-        }
-        @media (min-width: 1200px) {
-            .landing-nav { gap: 500px; }
-        }
-        .landing-nav-btn {
-            padding: 12px 36px;
-            border: none;
-            background: transparent;
-            color: #fff;
-            font-size: 20px;
-            font-family: 'Fjalla One', Arial, sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-        }
-        .landing-nav-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: #e0e0e0;
-        }
-        .landing-main-content {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: center;
-            height: 70vh;
-            margin-left: 80px;
-        }
-        .landing-subtitle {
-            font-size: 22px;
-            margin-bottom: 16px;
-        }
-        .landing-title {
-            font-family: 'Playfair Display', serif;
-            font-style: italic;
-            font-size: 64px;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .landing-desc {
-            font-size: 20px;
-            max-width: 600px;
-            margin-bottom: 32px;
-        }
-        .register-btn {
-            position: absolute;
-            right: 80px;
-            bottom: 80px;
-            padding: 0;
-            border: 2px solid #fff;
-            border-radius: 30px;
-            height: 60px;
-            width: 350px;
-            background: transparent;
-            color: #fff;
-            font-size: 20px;
-            font-family: 'Fjalla One', Arial, sans-serif;
-            cursor: pointer;
-            transition: background 0.2s, color 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            box-sizing: border-box;
-        }
-        .register-btn:hover {
-            background: rgba(255,255,255,0.1);
-            color: #e0e0e0;
-        }
-
-        @media (max-width: 700px) {
-            .landing-main-content {
-                margin-left: 20px;
-                height: auto;
-                margin-top: 50px;
-            }
-            .register-btn {
-                position: static;
-                margin: 40px 20px;
-                width: calc(100% - 40px);
-            }
-            .landing-title {
-                font-size: 36px;
-            }
-        }
-
-        /* ===========================================
-           STYLES FOR LOGGED IN (DASHBOARD)
-           ========================================= */
-        .dashboard-body {
-            background: #f5f3e7;
-            height: 100vh;
-            overflow: hidden;
-        }
-        .layout {
-            display: flex;
-            min-height: 100vh;
-            height: 100vh;
-        }
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #0a0f0d;
-            height: 100vh;
-        }
-        .top-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #2b3a2f;
-            color: #fff;
-            padding: 0 24px;
-            height: 8%;
-            border-left: 2px solid #222;
-            border-right: 2px solid #222;
-        }
-        .top-nav-left, .top-nav-right {
-            display: flex;
-            align-items: center;
-            height: 100%;
-        }
-        .top-nav-right {
-            gap: 18px;
-            border-left: 2px solid #222;
-        }
-        .habit-focus-name {
-            font-size: 20px;
-            font-weight: bold;
-            padding-left: 30px;
-            margin-right: 285px;
-        }
-        .icon-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 22px;
-            cursor: pointer;
-            margin-right: 8px;
-        }
-        .icon-btn:last-child {
-            margin-right: 0;
-        }
-        .calendar-date {
-            font-size: 16px;
-            margin-left: 6px;
-            margin-right: 12px;
-            color: #fff;
-        }
-        .nav-btn {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 18px;
-            font-family: 'Fjalla One', Arial, sans-serif;
-            margin-right: 32px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .nav-btn.active {
-            border: 2px solid #3b4d3f;
-        }
-        .nav-btn:hover {
-            background: #3b4d3f;
-        }
-        .search {
-            margin-right: 32px;
-            font-size: 22px;
-            color: #fff;
-        }
-        .main {
-            display: flex;
-            flex: 1;
-            min-height: 0;
-            height: calc(100vh - 56px);
-        }
-        .habit-list {
-            flex: 2;
-            background: #0a0f0d;
-            padding: 32px 24px;
-            overflow-y: auto;
-            border: 2px solid #222;
-        }
-        .habit-item {
-            display: flex;
-            align-items: center;
-            background: #3b4d3f;
-            color: #fff;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            padding: 12px 16px;
-            font-size: 18px;
-        }
-        .habit-circle {
-            width: 32px;
-            height: 32px;
-            background: #2b3a2f;
-            border-radius: 50%;
-            margin-right: 16px;
-        }
-        .habit-name {
-            flex: 1;
-        }
-        .habit-log {
-            margin-right: 16px;
-            cursor: pointer;
-        }
-        .habit-menu {
-            font-size: 22px;
-            cursor: pointer;
-        }
-        .detail-panel {
-            flex: 1;
-            background: #1a1a1a;
-            padding: 32px 24px;
-            color: #f5f3e7; 
-            border-top: 2px solid #222;
-        }
-        .detail-title {
-            font-size: 24px;
-            font-family: 'Playfair Display', serif;
-            margin-bottom: 24px;
-        }
-        .detail-streak {
-            background: #2b3a2f;
-            color: #f5f3e7;
-            border-radius: 8px;
-            padding: 18px 0;
-            font-size: 22px;
-            display: block;
-            width: 100%;
-            text-align: center;
-            margin-bottom: 16px;
-            margin-top: 8px;
-            font-weight: bold;
-            border: 1px solid #3b4d3f;
-        }
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.2);
-            z-index: 5;
-        }
-        .overlay.active {
-            display: block;
-        }
-    </style>
+    <link rel="stylesheet" href="ostalo/style.css">
 </head>
 <!-- ============================================= NON-LOGGED IN HTML ============================================== -->
 <?php if (!$isLoggedIn): ?>
@@ -310,130 +47,277 @@ $isLoggedIn = isset($_SESSION['user_id']);
 <body class="dashboard-body">
     <div class="layout">
         <?php include 'deli_strani/navigacija.php'; ?>
-        
+
         <div class="main-content">
             <div class="top-nav">
                 <div class="top-nav-left">
-                    <button class="nav-btn active">All habits</button>
+                    <button class="nav-btn active">Vse navade</button>
                     <span class="search">&#128269;</span>
-                    <button class="nav-btn">filter</button>
-                    <button class="nav-btn" id="addHabitBtn">add habit</button>
+                    <button class="nav-btn">Filter</button>
+                    <button class="nav-btn" id="addHabitBtn">+ Dodaj navado</button>
                 </div>
                 <div class="top-nav-right">
-                    <span class="habit-focus-name" id="habitFocusName">Reading</span>
-                    <button class="icon-btn" title="Minimize/Maximize">&#9723;</button>
-                    <button class="icon-btn" title="Calendar">&#128197;</button>
+                    <span class="habit-focus-name" id="habitFocusName">Habit Flow</span>
+                    <button class="icon-btn" title="Koledar">&#128197;</button>
                     <span class="calendar-date" id="calendarDate"></span>
-                    <button class="icon-btn" title="Exit">&#10005;</button>
                 </div>
             </div>
-            
+
             <div class="main">
-                <div class="habit-list" id="habitList">
-                    </div>
-                
-                <div class="detail-panel" id="detailPanel">
-                    <div class="detail-title" id="detailTitle">Reading</div>
-                    <div class="detail-streak">current streak</div>
-                </div>
+                <div class="habit-list" id="habitList"></div>
+
+                <?php include 'deli_strani/podrobnosti_navade.php'; ?>
             </div>
         </div>
     </div>
-    
-    <?php include 'deli_strani/dodaj_novo_navado.php'; ?>
-    
-    <script>
-        let habits = [
-            { name: 'Reading', streak: 5 },
-        ];
-        let selectedHabit = 0;
 
+    <?php include 'deli_strani/dodaj_novo_navado.php'; ?>
+
+    <script>
+        // ---------------------------------------------------
+        // DATA FROM PHP
+        // ---------------------------------------------------
+        const habits = <?php echo json_encode($navade, JSON_HEX_TAG | JSON_HEX_QUOT); ?>;
+        let selectedHabitId = null;
+
+        // ---------------------------------------------------
+        // HELPERS
+        // ---------------------------------------------------
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str ?? ''));
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('sl-SI', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+
+        // ---------------------------------------------------
+        // RENDER HABIT LIST
+        // ---------------------------------------------------
         function renderHabits() {
             const habitList = document.getElementById('habitList');
             habitList.innerHTML = '';
-            habits.forEach((habit, idx) => {
+
+            if (habits.length === 0) {
+                habitList.innerHTML = '<div class="habit-list-empty">Še nimate dodanih navad.<br>Kliknite "+ Dodaj navado" za začetek.</div>';
+                return;
+            }
+
+            habits.forEach((habit) => {
                 const item = document.createElement('div');
                 item.className = 'habit-item';
+                item.dataset.id = habit.id_navade;
+                const dotColor = habit.kategorija_barva || '#4a9d6f';
                 item.innerHTML = `
-                    <div class="habit-circle"></div>
-                    <div class="habit-name">${habit.name}</div>
-                    <div class="habit-log">log</div>
-                    <div class="habit-menu">&#8942;</div>
+                    <div class="habit-dot" style="background: ${dotColor};"></div>
+                    <div class="habit-name">${escapeHtml(habit.ime_navade)}</div>
+                    <div class="habit-streak-badge">${habit.streak || 0} 🔥</div>
                 `;
-                item.onclick = () => selectHabit(idx);
+                item.addEventListener('click', () => selectHabit(habit.id_navade));
                 habitList.appendChild(item);
             });
         }
 
-        function selectHabit(idx) {
-            selectedHabit = idx;
-            document.getElementById('detailTitle').textContent = habits[idx].name;
-            document.getElementById('habitFocusName').textContent = habits[idx].name;
-            document.getElementById('detailPanel').innerHTML = `
-                <div class="detail-title">${habits[idx].name}</div>
-                <div class="detail-streak">current streak: ${habits[idx].streak || 0}</div>
-            `;
-        }
+        // ---------------------------------------------------
+        // SELECT & SHOW HABIT DETAILS
+        // ---------------------------------------------------
+        function selectHabit(id) {
+            selectedHabitId = id;
+            const habit = habits.find(h => h.id_navade == id);
+            if (!habit) return;
 
-        function setCalendarDate() {
-            const now = new Date();
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            document.getElementById('calendarDate').textContent = now.toLocaleDateString('sl-SI', options);
-        }
-        setCalendarDate();
+            document.getElementById('habitFocusName').textContent = habit.ime_navade;
 
-        function openAddHabitForm() {
-            const form = document.getElementById('addHabitForm');
-            const overlay = document.getElementById('overlay');
-            if(form && overlay) {
-                form.classList.add('active');
-                overlay.classList.add('active');
-                const today = new Date().toISOString().split('T')[0];
-                const dateInput = document.getElementById('startDate');
-                if(dateInput) dateInput.value = today;
+            document.getElementById('detailEmpty').style.display = 'none';
+            document.getElementById('detailContent').style.display = 'block';
+
+            document.getElementById('detailTitle').textContent = habit.ime_navade;
+            document.getElementById('detailCategoryDot').style.background = habit.kategorija_barva || '#4a9d6f';
+            document.getElementById('detailStreak').textContent = habit.streak || 0;
+            document.getElementById('detailKategorija').textContent = habit.kategorija_ime || '-';
+
+            const ponavljanjeMap = { dnevno: 'Dnevno', tedensko: 'Tedensko', mesecno: 'Mesečno' };
+            document.getElementById('detailPonavljanje').textContent = ponavljanjeMap[habit.ponavljanje] || habit.ponavljanje;
+
+            const dneviRow = document.getElementById('detailDneviRow');
+            if (habit.ponavljanje === 'tedensko' && habit.izbrani_dnevi && habit.izbrani_dnevi !== 'vsak_dan') {
+                dneviRow.style.display = 'flex';
+                const dayMap = { ponedeljek: 'Ponedeljek', torek: 'Torek', sreda: 'Sreda', cetrtek: 'Četrtek', petek: 'Petek', sobota: 'Sobota', nedelja: 'Nedelja' };
+                const days = habit.izbrani_dnevi.split(',').map(d => dayMap[d.trim()] || d).join(', ');
+                document.getElementById('detailDnevi').textContent = days;
+            } else {
+                dneviRow.style.display = 'none';
             }
+
+            const obdobjeMap = { na_dan: 'na dan', na_teden: 'na teden', na_mesec: 'na mesec' };
+            document.getElementById('detailCilj').textContent =
+                `${habit.cilj_kolicina} ${habit.cilj_enota} ${obdobjeMap[habit.cilj_obdobje] || habit.cilj_obdobje}`;
+
+            document.getElementById('detailZacetek').textContent = formatDate(habit.zacetni_datum);
+
+            const konecRow = document.getElementById('detailKonecRow');
+            if (habit.konec_tip === 'nikoli' || !habit.konec_datum) {
+                konecRow.style.display = 'none';
+            } else {
+                konecRow.style.display = 'flex';
+                document.getElementById('detailKonec').textContent = formatDate(habit.konec_datum);
+            }
+
+            const opisRow = document.getElementById('detailOpisRow');
+            if (habit.opis && habit.opis.trim()) {
+                opisRow.style.display = 'flex';
+                document.getElementById('detailOpis').textContent = habit.opis;
+            } else {
+                opisRow.style.display = 'none';
+            }
+
+            // Highlight selected item in list
+            document.querySelectorAll('.habit-item').forEach(el => el.classList.remove('selected'));
+            const selectedEl = document.querySelector(`.habit-item[data-id="${id}"]`);
+            if (selectedEl) selectedEl.classList.add('selected');
+
+            // Wire up action buttons
+            document.getElementById('editHabitBtn').onclick = () => openEditHabitForm(habit);
+            document.getElementById('deleteHabitBtn').onclick = () => deleteHabit(habit.id_navade, habit.ime_navade);
+        }
+
+        // ---------------------------------------------------
+        // DELETE HABIT
+        // ---------------------------------------------------
+        function deleteHabit(id, name) {
+            if (!confirm(`Ste prepričani, da želite izbrisati navado "${name}"?`)) return;
+
+            fetch('logika/izbrisi_navado.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `id_navade=${encodeURIComponent(id)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const idx = habits.findIndex(h => h.id_navade == id);
+                    if (idx !== -1) habits.splice(idx, 1);
+                    renderHabits();
+                    document.getElementById('detailEmpty').style.display = 'block';
+                    document.getElementById('detailContent').style.display = 'none';
+                    document.getElementById('habitFocusName').textContent = 'Habit Flow';
+                    selectedHabitId = null;
+                } else {
+                    alert('Napaka pri brisanju navade.');
+                }
+            })
+            .catch(() => alert('Napaka pri brisanju navade.'));
+        }
+
+        // ---------------------------------------------------
+        // OPEN EDIT FORM (pre-fill modal with existing data)
+        // ---------------------------------------------------
+        function openEditHabitForm(habit) {
+            document.getElementById('habitName').value = habit.ime_navade;
+            document.getElementById('habitDescription').value = habit.opis || '';
+            document.getElementById('frequencySelect').value = habit.ponavljanje;
+            document.getElementById('startDate').value = habit.zacetni_datum || '';
+            document.getElementById('editHabitId').value = habit.id_navade;
+            document.getElementById('habitForm').action = 'logika/uredi_navado.php';
+            document.getElementById('formTitle').textContent = 'Uredi navado';
+            document.querySelector('#habitForm .btn-save').textContent = 'Shrani spremembe';
+
+            // Days dropdown
+            if (habit.ponavljanje === 'tedensko') {
+                document.getElementById('daysDropdown').style.display = 'block';
+                document.querySelectorAll('#daysContent input[type="checkbox"]').forEach(cb => cb.checked = false);
+                if (habit.izbrani_dnevi && habit.izbrani_dnevi !== 'vsak_dan') {
+                    const dayIdMap = { ponedeljek: 'monday', torek: 'tuesday', sreda: 'wednesday', cetrtek: 'thursday', petek: 'friday', sobota: 'saturday', nedelja: 'sunday' };
+                    habit.izbrani_dnevi.split(',').forEach(day => {
+                        const cbId = dayIdMap[day.trim()];
+                        if (cbId) document.getElementById(cbId).checked = true;
+                    });
+                }
+                updateDaysButtonText();
+            } else {
+                document.getElementById('daysDropdown').style.display = 'none';
+            }
+
+            // Category
+            const katSelect = document.querySelector('select[name="kategorija"]');
+            if (katSelect && habit.kategorija_ime) katSelect.value = habit.kategorija_ime.toLowerCase();
+
+            // Goal
+            const kolicina = document.querySelector('input[name="cilj_kolicina"]');
+            const enota    = document.querySelector('select[name="cilj_enota"]');
+            const obdobje  = document.querySelector('select[name="cilj_obdobje"]');
+            if (kolicina) kolicina.value = habit.cilj_kolicina;
+            if (enota)    enota.value    = habit.cilj_enota;
+            if (obdobje)  obdobje.value  = habit.cilj_obdobje;
+
+            // End condition
+            const endSelect = document.getElementById('endConditionSelect');
+            if (endSelect) {
+                endSelect.value = habit.konec_tip || 'nikoli';
+                endSelect.dispatchEvent(new Event('change'));
+                if (habit.konec_tip === 'datum' && habit.konec_datum) {
+                    document.getElementById('endDateInput').value = habit.konec_datum;
+                }
+            }
+
+            openAddHabitForm();
+        }
+
+        // ---------------------------------------------------
+        // ADD / CLOSE MODAL
+        // ---------------------------------------------------
+        function openAddHabitForm() {
+            document.getElementById('addHabitForm').classList.add('active');
+            document.getElementById('overlay').classList.add('active');
         }
 
         function closeAddHabitForm() {
-            const form = document.getElementById('addHabitForm');
-            const overlay = document.getElementById('overlay');
+            document.getElementById('addHabitForm').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
             const habitForm = document.getElementById('habitForm');
-            
-            if(form && overlay) {
-                form.classList.remove('active');
-                overlay.classList.remove('active');
+            if (habitForm) {
+                habitForm.reset();
+                habitForm.action = 'logika/shrani_navado.php';
+                document.getElementById('editHabitId').value = '';
+                document.getElementById('formTitle').textContent = 'Nova navada';
+                document.querySelector('#habitForm .btn-save').textContent = 'Shrani';
+                document.getElementById('daysDropdown').style.display = 'none';
             }
-            if(habitForm) habitForm.reset();
         }
 
-        const addHabitBtn = document.getElementById('addHabitBtn');
-        if(addHabitBtn) addHabitBtn.onclick = openAddHabitForm;
-        
-        const overlay = document.getElementById('overlay');
-        if(overlay) overlay.onclick = closeAddHabitForm;
-        
-        const cancelBtn = document.getElementById('cancelBtn');
-        if(cancelBtn) cancelBtn.onclick = closeAddHabitForm;
-        
-        const habitForm = document.getElementById('habitForm');
-        if(habitForm) {
-            habitForm.onsubmit = function (e) {
-                e.preventDefault();
-                const nameInput = document.getElementById('habitName');
-                if(nameInput) {
-                    const name = nameInput.value;
-                    if (name.trim()) {
-                        habits.push({ name, streak: 0 });
-                        renderHabits();
-                        selectHabit(habits.length - 1);
-                        closeAddHabitForm();
-                    }
-                }
-            };
+        // ---------------------------------------------------
+        // CALENDAR DATE
+        // ---------------------------------------------------
+        function setCalendarDate() {
+            const now = new Date();
+            document.getElementById('calendarDate').textContent =
+                now.toLocaleDateString('sl-SI', { year: 'numeric', month: 'short', day: 'numeric' });
         }
+        setCalendarDate();
 
+        // ---------------------------------------------------
+        // EVENT LISTENERS
+        // ---------------------------------------------------
+        document.getElementById('addHabitBtn').addEventListener('click', () => {
+            document.getElementById('formTitle').textContent = 'Nova navada';
+            document.querySelector('#habitForm .btn-save').textContent = 'Shrani';
+            document.getElementById('editHabitId').value = '';
+            document.getElementById('habitForm').action = 'logika/shrani_navado.php';
+            openAddHabitForm();
+        });
+
+        document.getElementById('overlay').addEventListener('click', closeAddHabitForm);
+        document.getElementById('cancelBtn').addEventListener('click', closeAddHabitForm);
+
+        // ---------------------------------------------------
+        // INIT
+        // ---------------------------------------------------
         renderHabits();
-        selectHabit(0);
+        if (habits.length > 0) selectHabit(habits[0].id_navade);
     </script>
 </body>
 <?php endif; ?>
