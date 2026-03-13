@@ -26,6 +26,9 @@ $ponavljanje   = $_POST['ponavljanje'] ?? 'dnevno';
 // If frequency is not weekly, no days are sent, so we store "vsak_dan"
 $izbrani_dnevi = isset($_POST['dnevi']) ? implode(",", $_POST['dnevi']) : "vsak_dan";
 
+// Part of day
+$del_dneva = isset($_POST['del_dneva']) ? implode(",", $_POST['del_dneva']) : null;
+
 // --- Goal ---
 $cilj_kolicina = (int)($_POST['cilj_kolicina'] ?? 1);
 $cilj_enota    = $_POST['cilj_enota'] ?? 'krat';
@@ -71,9 +74,9 @@ if ($kategorija) {
 // --- Insert habit ---
 $sql = "INSERT INTO navade (
     id_uporabnika, id_kategorije, ime_navade, ponavljanje, izbrani_dnevi,
-    cilj_kolicina, cilj_enota, cilj_obdobje, zacetni_datum,
+    del_dneva, cilj_kolicina, cilj_enota, cilj_obdobje, zacetni_datum,
     konec_tip, konec_datum, opis, streak
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute([
@@ -82,6 +85,7 @@ $stmt->execute([
     $ime_navade,
     $ponavljanje,
     $izbrani_dnevi,
+    $del_dneva,
     $cilj_kolicina,
     $cilj_enota,
     $cilj_obdobje,

@@ -29,6 +29,7 @@ $opis          = trim($_POST['opis'] ?? '');
 $zacetni_datum = $_POST['zacetni_datum'] ?? date('Y-m-d');
 $ponavljanje   = $_POST['ponavljanje'] ?? 'dnevno';
 $izbrani_dnevi = isset($_POST['dnevi']) ? implode(",", $_POST['dnevi']) : "vsak_dan";
+$del_dneva     = isset($_POST['del_dneva']) ? implode(",", $_POST['del_dneva']) : null;
 
 // --- Goal ---
 $cilj_kolicina = (int)($_POST['cilj_kolicina'] ?? 1);
@@ -77,6 +78,7 @@ $sql = "UPDATE navade SET
     ime_navade     = ?,
     ponavljanje    = ?,
     izbrani_dnevi  = ?,
+    del_dneva      = ?,
     cilj_kolicina  = ?,
     cilj_enota     = ?,
     cilj_obdobje   = ?,
@@ -92,6 +94,7 @@ $stmt->execute([
     $ime_navade,
     $ponavljanje,
     $izbrani_dnevi,
+    $del_dneva,
     $cilj_kolicina,
     $cilj_enota,
     $cilj_obdobje,

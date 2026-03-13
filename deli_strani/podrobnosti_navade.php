@@ -42,11 +42,17 @@
                 <span class="detail-label">Konec</span>
                 <span class="detail-value" id="detailKonec"></span>
             </div>
+            <div class="detail-row" id="detailDelDnevaRow">
+                <span class="detail-label">Del dneva</span>
+                <span class="detail-value" id="detailDelDneva"></span>
+            </div>
             <div class="detail-row" id="detailOpisRow">
                 <span class="detail-label">Opis</span>
                 <span class="detail-value" id="detailOpis"></span>
             </div>
         </div>
+
+        <?php include 'deli_strani/graf_navade.php'; ?>
 
         <div class="detail-actions">
             <button class="detail-btn detail-btn-edit" id="editHabitBtn">✏️ Uredi</button>

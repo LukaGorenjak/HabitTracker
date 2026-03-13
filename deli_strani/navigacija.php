@@ -1,18 +1,21 @@
 <?php
-$username = isset($_SESSION['username']) ? $_SESSION['username'] : 'Gost';
+$username    = isset($_SESSION['username'])         ? $_SESSION['username']         : 'Gost';
+$profilSlika = isset($currentUser['profilna_slika']) && $currentUser['profilna_slika']
+    ? htmlspecialchars($currentUser['profilna_slika'])
+    : 'ostalo/slike/simple-white-circle-and-drop-shadow-png.png';
 ?>
 
 
 <div class="sidebar">
     <div class="profile-container">
         <div class="profile" id="profileToggle">
-            <img src="ostalo/slike/simple-white-circle-and-drop-shadow-png.png" alt="Profil">
+            <img src="<?php echo $profilSlika; ?>" alt="Profil" class="sidebar-avatar">
             <h2><?php echo htmlspecialchars($username); ?></h2>
             <span class="profile-arrow">▼</span>
         </div>
-        
+
         <div class="profile-dropdown" id="sideDropdown">
-            <a href="profil_nastavitve.php">⚙️ Nastavitve</a>
+            <a href="#" onclick="openNastavitve(); return false;">⚙️ Nastavitve</a>
             <a href="avtentikacija/odjava.php" class="logout-link">🚪 Odjava</a>
         </div>
     </div>
