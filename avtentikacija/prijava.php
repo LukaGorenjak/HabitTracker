@@ -1,77 +1,78 @@
 <?php
+// Zaženi sejo (pred vsem ostalim)
 session_start();
-require 'C:\xampp\htdocs\HabitTracker\konfiguracija\db.php'; 
+// Absolutna pot do db.php (zanesljiva ne glede na CWD)
+require 'C:\xampp\htdocs\HabitTracker\konfiguracija\db.php';
 
-$error = '';
+$error = ''; // spremenljivka za prikaz napake v HTML
 
+// Obdelaj obrazec samo ob POST zahtevi
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // trim() odstrani presledke; sprejme uporabniško ime ALI e-pošto
     $login_name = trim($_POST['ime_ali_email']);
     $password = $_POST['geslo'];
 
+    // Oba polja morata biti izpolnjena
     if (empty($login_name) || empty($password)) {
         $error = "Prosim, vnesi vse podatke.";
     } else {
+        // Poišči uporabnika po imenu ALI e-pošti (en poizvedba pokrije oba primera)
         $stmt = $pdo->prepare("SELECT * FROM uporabniki WHERE uporabnisko_ime = ? OR email = ?");
+        // Isti $login_name pošljemo dvakrat – enkrat za vsak ?
         $stmt->execute([$login_name, $login_name]);
-        
-        $user = $stmt->fetch();
-        
-        if ($user && password_verify($password, $user['hash_gesla'])) {
-            
-            $_SESSION['user_id'] = $user['id_uporabnika'];
-            $_SESSION['username'] = $user['uporabnisko_ime'];
-            $_SESSION['role'] = $user['vloga'];
 
+        $user = $stmt->fetch(); // vrne associativni niz z vsemi stolpci ali false
+
+        // password_verify() primerja vneseno geslo z bcrypt hashom iz baze
+        if ($user && password_verify($password, $user['hash_gesla'])) {
+            // Geslo se ujema → shrani podatke v sejo
+            $_SESSION['user_id'] = $user['id_uporabnika'];     // primarni ključ
+            $_SESSION['username'] = $user['uporabnisko_ime'];  // prikazno ime
+            $_SESSION['role'] = $user['vloga'];                // vloga (za morebitne pravice)
+
+            // Preusmeri na glavno stran
             header("Location: ../index.php");
-            exit;
+            exit; // zaustavi izvajanje (ne pošlji HTML)
         } else {
+            // Napačno geslo ali uporabnik ne obstaja
             $error = "Napačno uporabniško ime ali geslo.";
         }
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prijava</title>
+    <title>Prijava – Habit Flow</title>
     <link rel="stylesheet" href="../ostalo/style.css">
 </head>
 <body class="auth-body">
-    <div class="container">
-        <div class="left">
-            <div class="testimonial">
-                <div class="testimonial-quote">"66chat je res izjemen. Omogoča prilagodljivost in širok nabor raziskovalnih metod ter oblikovanja študij."</div>
-                <div class="testimonial-author">Pablo Escanor – UX raziskovalec</div>
-            </div>
-        </div>
-        <div class="right">
-            <div class="form-box">
-                <h1>Dobrodošli v HabitFlow!</h1>
+    <div class="auth-center">
+        <div class="auth-card">
 
-                <?php if ($error): ?>
-                    <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
+            <div class="auth-logo">Habit Flow</div>
+            <h1 class="auth-title">Dobrodošli nazaj</h1>
 
-                <form method="POST" action="prijava.php">
-                    <div class="form-group">
-                        <label for="email">E-pošta ali uporabniško ime</label>
-                        <input type="text" id="email" name="ime_ali_email" placeholder="Vnesite e-pošto ali ime" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Geslo</label>
-                        <input type="password" id="password" name="geslo" placeholder="Vnesite geslo" required>
-                    </div>
-                    <button type="submit">Prijavi se</button>
-                </form>
+            <?php if ($error): ?>
+                <div class="error-msg"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
 
-                <div class="divider">ali</div>
-                <div class="login-link">Še nimate računa? <a href="registracija.php">Registracija</a></div>
-                <button class="social-btn"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" alt="Google"> Nadaljuj z Google</button>
-                <button class="social-btn"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/apple/apple-original.svg" alt="Apple"> Nadaljuj z Apple</button>
-                <button class="social-btn"><img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/twitter/twitter-original.svg" alt="X"> Nadaljuj z X</button>
-            </div>
+            <form method="POST" action="prijava.php">
+                <div class="form-group">
+                    <label for="email">E-pošta ali uporabniško ime</label>
+                    <input type="text" id="email" name="ime_ali_email" placeholder="Vnesite e-pošto ali ime" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Geslo</label>
+                    <input type="password" id="password" name="geslo" placeholder="Vnesite geslo" required>
+                </div>
+                <button type="submit" class="btn-submit">Prijavi se</button>
+            </form>
+
+            <div class="auth-link">Še nimate računa? <a href="registracija.php">Registracija</a></div>
+
         </div>
     </div>
 </body>

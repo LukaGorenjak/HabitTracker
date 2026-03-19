@@ -61,8 +61,8 @@
             <div class="nastavitve-msg nastavitve-success" id="nastavitveSuccess" style="display:none;"></div>
 
             <div class="form-section" style="justify-content:flex-end; gap:10px; border:none; padding-top:8px;">
-                <button type="button" class="btn-cancel" id="cancelNastavitveBtn2">Prekliči</button>
-                <button type="submit" class="btn-save">Shrani</button>
+                <button type="button" class="form-button btn-cancel" id="cancelNastavitveBtn2">Prekliči</button>
+                <button type="submit" class="form-button btn-save">Shrani</button>
             </div>
 
         </form>

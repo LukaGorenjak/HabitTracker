@@ -83,6 +83,15 @@
             </div>
 
             <div class="form-section">
+                <div class="section-icon">🏁</div>
+                <div class="section-label">Streak cilj</div>
+                <div class="section-controls">
+                    <input type="number" id="ciljDniInput" name="cilj_dni" class="form-input form-input-number" min="1" placeholder="npr. 30">
+                    <span style="color:#aaa; font-size:13px;">dni (neobvezno)</span>
+                </div>
+            </div>
+
+            <div class="form-section">
                 <div class="section-icon">☀️</div>
                 <div class="section-label">Del dneva</div>
                 <div class="section-controls">
@@ -104,39 +113,21 @@
             </div>
 
             <div class="form-section">
-                <div class="section-icon">📅</div>
-                <div class="section-label">Začetek</div>
-                <div class="section-controls">
-                    <input type="date" id="startDate" name="zacetni_datum" class="date-input">
-                </div>
-            </div>
-
-            <div class="form-section">
-                <div class="section-icon">⏹️</div>
-                <div class="section-label">Končaj</div>
-                <div class="section-controls">
-                    <select id="endConditionSelect" name="konec_tip" class="form-select">
-                        <option value="nikoli">Nikoli</option>
-                        <option value="datum">Specifičen datum</option>
-                        <option value="dni">Čez X dni</option>
-                    </select>
-                    <input type="date" id="endDateInput" name="konec_datum" class="date-input" style="display: none;">
-                    <div id="endDaysContainer" style="display: none; align-items: center; gap: 8px;">
-                        <input type="number" name="konec_dni" class="form-input form-input-number" min="1"
-                            placeholder="Št.">
-                        <span style="color: #f5f3e7;">dni</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-section">
                 <div class="section-icon">📁</div>
                 <div class="section-label">Kategorija</div>
                 <div class="section-controls">
-                    <select name="kategorija" class="form-select">
-                        <option value="zdravje">Zdravje</option>
-                        <option value="delo">Delo</option>
-                        <option value="osebno">Osebno</option>
+                    <select name="kategorija" id="habitKategorijaSelect" class="form-select">
+                        <?php if (!empty($kategorijeList)): ?>
+                            <?php foreach ($kategorijeList as $kat): ?>
+                                <option value="<?php echo htmlspecialchars($kat['ime']); ?>">
+                                    <?php echo htmlspecialchars(ucfirst($kat['ime'])); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <option value="zdravje">Zdravje</option>
+                            <option value="delo">Delo</option>
+                            <option value="osebno">Osebno</option>
+                        <?php endif; ?>
                     </select>
                 </div>
             </div>
@@ -222,26 +213,4 @@
 
     updateDaysButtonText();
 
-    // ---------------------------------------------
-    // LOGIKA ZA SKRITA POLJA PRI KONCU NAVADE
-    // ---------------------------------------------
-    const endConditionSelect = document.getElementById('endConditionSelect');
-    const endDateInput = document.getElementById('endDateInput');
-    const endDaysContainer = document.getElementById('endDaysContainer');
-
-    endConditionSelect.addEventListener('change', function () {
-        // Najprej skrijemo oboje
-        endDateInput.style.display = 'none';
-        endDaysContainer.style.display = 'none';
-
-        // Prikažemo pravo polje glede na izbiro
-        if (this.value === 'datum') {
-            endDateInput.style.display = 'block';
-        } else if (this.value === 'dni') {
-            endDaysContainer.style.display = 'flex';
-        }
-    });
-
-    // Nastavimo današnji datum kot privzet začetni datum
-    document.getElementById('startDate').valueAsDate = new Date();
 </script>

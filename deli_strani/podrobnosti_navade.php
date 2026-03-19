@@ -12,9 +12,17 @@
         </div>
 
         <div class="detail-streak-box">
-            <span class="detail-streak-label">Trenutni niz</span>
+            <span class="detail-streak-label">Trenutni streak</span>
             <span class="detail-streak-number" id="detailStreak">0</span>
             <span class="detail-streak-unit">dni</span>
+        </div>
+
+        <div class="detail-progress-section" id="detailProgressSection" style="display:none;">
+            <div class="progress-chart-wrap">
+                <canvas id="progressChart" width="140" height="140"></canvas>
+                <div class="progress-chart-label" id="progressChartLabel"></div>
+            </div>
+            <div class="progress-goal-text" id="progressGoalText"></div>
         </div>
 
         <div class="detail-info">
@@ -34,15 +42,7 @@
                 <span class="detail-label">Cilj</span>
                 <span class="detail-value" id="detailCilj"></span>
             </div>
-            <div class="detail-row">
-                <span class="detail-label">Začetek</span>
-                <span class="detail-value" id="detailZacetek"></span>
-            </div>
-            <div class="detail-row" id="detailKonecRow">
-                <span class="detail-label">Konec</span>
-                <span class="detail-value" id="detailKonec"></span>
-            </div>
-            <div class="detail-row" id="detailDelDnevaRow">
+<div class="detail-row" id="detailDelDnevaRow">
                 <span class="detail-label">Del dneva</span>
                 <span class="detail-value" id="detailDelDneva"></span>
             </div>
