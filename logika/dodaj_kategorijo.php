@@ -9,6 +9,12 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Preveri CSRF token
+if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    echo json_encode(['success' => false, 'error' => 'Neveljavna seja.']);
+    exit();
+}
+
 $id_uporabnika = (int)$_SESSION['user_id'];
 $ime   = trim($_POST['ime']   ?? '');
 $barva = trim($_POST['barva'] ?? '#4a9d6f');
@@ -18,7 +24,6 @@ if (empty($ime)) {
     exit();
 }
 
-// Prepreči podvojene kategorije za tega uporabnika
 $stmt = $pdo->prepare("SELECT id_kategorije FROM kategorije WHERE id_uporabnika = ? AND ime = ?");
 $stmt->execute([$id_uporabnika, $ime]);
 if ($stmt->fetch()) {
@@ -26,7 +31,6 @@ if ($stmt->fetch()) {
     exit();
 }
 
-// Validacija barve (hex format)
 if (!preg_match('/^#[0-9a-fA-F]{6}$/', $barva)) {
     $barva = '#4a9d6f';
 }

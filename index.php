@@ -60,6 +60,9 @@ if ($isLoggedIn) {
     <title>Habit Flow</title>
     <link rel="stylesheet" href="ostalo/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <?php if ($isLoggedIn): ?>
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+    <?php endif; ?>
 </head>
 <!-- ============================================= NON-LOGGED IN HTML ============================================== -->
 <?php if (!$isLoggedIn): ?>
@@ -117,7 +120,6 @@ if ($isLoggedIn) {
     </div>
 
     <?php include 'deli_strani/dodaj_novo_navado.php'; ?>
-    <?php include 'deli_strani/nastavitve.php'; ?>
     <?php include 'deli_strani/statistika.php'; ?>
 
     <script>
@@ -144,6 +146,9 @@ if ($isLoggedIn) {
             'email'         => $currentUser['email']          ?? '',
             'profilna_slika'=> $currentUser['profilna_slika'] ?? null,
         ]); ?>;
+
+        // CSRF token za zaščito AJAX zahtevkov
+        const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
         // selectedHabitId = ID trenutno izbrane navade (null = nobena ni izbrana)
         let selectedHabitId = null;
@@ -221,8 +226,12 @@ if ($isLoggedIn) {
                     : '';
 
                 // template literal: ustvari HTML niz z vstavljenimi vrednostmi
+                const iconEl = habit.emoji
+                    ? `<span class="habit-emoji" style="font-size:20px; margin-right:4px; flex-shrink:0;">${escapeHtml(habit.emoji)}</span>`
+                    : `<div class="habit-dot" style="background: ${dotColor};"></div>`;
+
                 item.innerHTML = `
-                    <div class="habit-dot" style="background: ${dotColor};"></div>
+                    ${iconEl}
                     <div class="habit-name">${escapeHtml(habit.ime_navade)}</div>
                     <div class="habit-streak-badge">${habit.streak || 0} 🔥</div>
                     <button class="habit-log-btn ${isLogged ? 'logged' : ''}" title="${isLogged ? 'Že zabeleženo' : 'Zabeleži za danes'}">
@@ -253,7 +262,7 @@ if ($isLoggedIn) {
             fetch('logika/zabeleznaj_navado.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `id_navade=${encodeURIComponent(id)}` // encodeURIComponent zaščiti posebne znake
+                body: `id_navade=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(CSRF)}`
             })
             .then(res => res.json())    // PHP odgovori z JSON nizom → pretvorimo v JS objekt
             .then(data => {
@@ -406,7 +415,7 @@ if ($isLoggedIn) {
             fetch('logika/izbrisi_navado.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `id_navade=${encodeURIComponent(id)}`
+                body: `id_navade=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(CSRF)}`
             })
             .then(res => res.json())
             .then(data => {
@@ -422,10 +431,10 @@ if ($isLoggedIn) {
                     document.getElementById('detailContent').style.display = 'none';
                     selectedHabitId = null;
                 } else {
-                    alert('Napaka pri brisanju navade.');
+                    showToast('Napaka pri brisanju navade.', 'error');
                 }
             })
-            .catch(() => alert('Napaka pri brisanju navade.'));
+            .catch(() => showToast('Napaka pri brisanju navade.', 'error'));
         }
 
         // ===================================================
@@ -479,6 +488,11 @@ if ($isLoggedIn) {
             const ciljDni = document.getElementById('ciljDniInput');
             if (ciljDni)  ciljDni.value  = habit.cilj_dni || '';
 
+            // Predpolni emoji picker
+            if (typeof window.setHabitEmoji === 'function') {
+                window.setHabitEmoji(habit.emoji || '');
+            }
+
             openAddHabitForm(); // odpre modal (doda CSS razred 'active')
         }
 
@@ -505,44 +519,13 @@ if ($isLoggedIn) {
                 document.getElementById('formTitle').textContent = 'Nova navada';
                 document.querySelector('#habitForm .btn-save').textContent = 'Shrani';
                 document.getElementById('daysDropdown').style.display = 'none';
+                if (typeof window.setHabitEmoji === 'function') window.setHabitEmoji('');
             }
         }
 
         // ===================================================
-        // NASTAVITVE PROFILA
+        // STATISTIKA
         // ===================================================
-
-        // Privzeta slika, če uporabnik nima naložene profilne slike
-        const DEFAULT_AVATAR = 'ostalo/slike/simple-white-circle-and-drop-shadow-png.png';
-
-        // openNastavitve: odpre nastavitve modal in ga predizpolni z obstoječimi podatki
-        function openNastavitve() {
-            // Zapolnimo polja iz currentUser objekta (ki ga je PHP dal JS-u ob nalaganju strani)
-            document.getElementById('nastavitveIme').value   = currentUser.ime;
-            document.getElementById('nastavitveEmail').value = currentUser.email;
-
-            // Geslo polja vedno prazna (varnostni razlog — gesla ne pošiljamo nazaj v browser)
-            document.getElementById('trenutnoGeslo').value   = '';
-            document.getElementById('novoGeslo').value       = '';
-            document.getElementById('potrdiGeslo').value     = '';
-
-            // Skrijemo morebitna stara sporočila o napaki/uspehu
-            document.getElementById('nastavitveError').style.display   = 'none';
-            document.getElementById('nastavitveSuccess').style.display = 'none';
-
-            // Prikažemo profilno sliko (ali privzeto, če ni naložena)
-            document.getElementById('profilPreview').src =
-                currentUser.profilna_slika ? currentUser.profilna_slika : DEFAULT_AVATAR;
-
-            document.getElementById('nastavitveModal').classList.add('active');
-            document.getElementById('overlay').classList.add('active');
-        }
-
-        // closeNastavitve: zapre nastavitve modal
-        function closeNastavitve() {
-            document.getElementById('nastavitveModal').classList.remove('active');
-            document.getElementById('overlay').classList.remove('active');
-        }
 
         // openStatistika / closeStatistika
         function openStatistika() {
@@ -554,67 +537,6 @@ if ($isLoggedIn) {
             document.getElementById('overlay').classList.remove('active');
         }
         document.getElementById('closeStatistika').addEventListener('click', closeStatistika);
-
-        // Predogled profilne slike — ko uporabnik izbere datoteko, jo takoj prikaže
-        // FileReader prebere datoteko lokalno (brez pošiljanja na strežnik) in vrne base64 URL
-        document.getElementById('profilnaSlika').addEventListener('change', function () {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                // Ko branje konča, nastavimo src na base64 niz — browser prikaže sliko
-                reader.onload = e => document.getElementById('profilPreview').src = e.target.result;
-                reader.readAsDataURL(file); // začnemo branje kot Data URL (base64)
-            }
-        });
-
-        // Pošiljanje nastavitev — AJAX z FormData (podpira tudi nalaganje datotek)
-        document.getElementById('nastavitveFormEl').addEventListener('submit', function (e) {
-            e.preventDefault(); // preprečimo privzeto oddajanje forme (page reload)
-
-            const errorEl   = document.getElementById('nastavitveError');
-            const successEl = document.getElementById('nastavitveSuccess');
-            errorEl.style.display = successEl.style.display = 'none'; // skrijemo stara sporočila
-
-            // FormData samodejno zbere vse vrednosti polja + datoteke iz forme
-            // V nasprotju z URLSearchParams, FormData podpira binarne datoteke (slike)
-            const formData = new FormData(this);
-
-            fetch('logika/shrani_nastavitve.php', { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success) {
-                        // Prikažemo napako pod formo
-                        errorEl.textContent   = data.error;
-                        errorEl.style.display = 'block';
-                        return;
-                    }
-
-                    // Posodobimo currentUser v spominu brskalnika (brez reload)
-                    currentUser.ime = data.ime;
-                    if (data.profilna_slika) currentUser.profilna_slika = data.profilna_slika;
-
-                    // Takoj posodobimo ime in sliko v stranski vrstici
-                    const sidebarName = document.querySelector('.profile h2');
-                    if (sidebarName) sidebarName.textContent = data.ime;
-                    if (data.profilna_slika) {
-                        const sidebarImg = document.querySelector('.profile img');
-                        if (sidebarImg) sidebarImg.src = data.profilna_slika;
-                    }
-
-                    // Prikažemo sporočilo o uspehu, po 1.2s zapremo modal
-                    successEl.textContent   = 'Nastavitve so bile shranjene!';
-                    successEl.style.display = 'block';
-                    setTimeout(closeNastavitve, 1200);
-                })
-                .catch(() => {
-                    errorEl.textContent   = 'Napaka pri shranjevanju.';
-                    errorEl.style.display = 'block';
-                });
-        });
-
-        // Gumba za zapiranje nastavitve modala
-        document.getElementById('cancelNastavitveBtn').addEventListener('click', closeNastavitve);
-        document.getElementById('cancelNastavitveBtn2').addEventListener('click', closeNastavitve);
 
         // ===================================================
         // MESEČNI KOLEDAR NAVADE
@@ -719,7 +641,7 @@ if ($isLoggedIn) {
             fetch('logika/zabeleznaj_navado.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `id_navade=${encodeURIComponent(calHabitId)}&datum=${encodeURIComponent(datum)}`
+                body: `id_navade=${encodeURIComponent(calHabitId)}&datum=${encodeURIComponent(datum)}&csrf_token=${encodeURIComponent(CSRF)}`
             })
             .then(res => res.json())
             .then(data => {
@@ -840,7 +762,7 @@ if ($isLoggedIn) {
                 fetch('logika/dodaj_kategorijo.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'ime=' + encodeURIComponent(ime) + '&barva=' + encodeURIComponent(barva)
+                    body: 'ime=' + encodeURIComponent(ime) + '&barva=' + encodeURIComponent(barva) + '&csrf_token=' + encodeURIComponent(CSRF)
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(d) {
@@ -864,7 +786,7 @@ if ($isLoggedIn) {
                         document.getElementById('novaKatIme').value = '';
                         document.getElementById('novaKategorijaPanel').classList.remove('active');
                     } else {
-                        alert(d.error || 'Napaka pri dodajanju kategorije.');
+                        showToast(d.error || 'Napaka pri dodajanju kategorije.', 'error');
                     }
                 });
             });

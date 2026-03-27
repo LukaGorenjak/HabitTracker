@@ -1,40 +1,27 @@
 <?php
-// Zaženi sejo (pred vsem ostalim)
 session_start();
-// Absolutna pot do db.php (zanesljiva ne glede na CWD)
 require 'C:\xampp\htdocs\HabitTracker\konfiguracija\db.php';
 
-$error = ''; // spremenljivka za prikaz napake v HTML
+$error = '';
 
-// Obdelaj obrazec samo ob POST zahtevi
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // trim() odstrani presledke; sprejme uporabniško ime ALI e-pošto
     $login_name = trim($_POST['ime_ali_email']);
-    $password = $_POST['geslo'];
+    $password   = $_POST['geslo'];
 
-    // Oba polja morata biti izpolnjena
     if (empty($login_name) || empty($password)) {
         $error = "Prosim, vnesi vse podatke.";
     } else {
-        // Poišči uporabnika po imenu ALI e-pošti (en poizvedba pokrije oba primera)
         $stmt = $pdo->prepare("SELECT * FROM uporabniki WHERE uporabnisko_ime = ? OR email = ?");
-        // Isti $login_name pošljemo dvakrat – enkrat za vsak ?
         $stmt->execute([$login_name, $login_name]);
+        $user = $stmt->fetch();
 
-        $user = $stmt->fetch(); // vrne associativni niz z vsemi stolpci ali false
-
-        // password_verify() primerja vneseno geslo z bcrypt hashom iz baze
         if ($user && password_verify($password, $user['hash_gesla'])) {
-            // Geslo se ujema → shrani podatke v sejo
-            $_SESSION['user_id'] = $user['id_uporabnika'];     // primarni ključ
-            $_SESSION['username'] = $user['uporabnisko_ime'];  // prikazno ime
-            $_SESSION['role'] = $user['vloga'];                // vloga (za morebitne pravice)
-
-            // Preusmeri na glavno stran
+            $_SESSION['user_id']  = $user['id_uporabnika'];
+            $_SESSION['username'] = $user['uporabnisko_ime'];
+            $_SESSION['role']     = $user['vloga'];
             header("Location: ../index.php");
-            exit; // zaustavi izvajanje (ne pošlji HTML)
+            exit;
         } else {
-            // Napačno geslo ali uporabnik ne obstaja
             $error = "Napačno uporabniško ime ali geslo.";
         }
     }

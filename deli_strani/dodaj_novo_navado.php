@@ -7,12 +7,24 @@
     <div class="form-content">
         <form id="habitForm" action="logika/shrani_navado.php" method="POST">
             <input type="hidden" id="editHabitId" name="id_navade" value="">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token'] ?? ''); ?>">
+            <input type="hidden" name="emoji" id="emojiInput" value="">
 
             <div class="form-section">
-                <div class="section-icon">❓</div>
-                <div class="section-controls" style="flex: 1;">
+                <div class="section-icon">✏️</div>
+                <div class="section-controls" style="flex: 1; align-items: center;">
+                    <div class="emoji-picker-wrap">
+                        <button type="button" class="emoji-pick-btn empty" id="emojiBtn" title="Izberi ikono">
+                            <span id="emojiDisplay">+</span>
+                        </button>
+                        <button type="button" class="emoji-clear-btn" id="emojiClearBtn" title="Odstrani ikono">✕</button>
+                        <div class="emoji-grid-popup" id="emojiGrid">
+                            <div class="emoji-grid-inner" id="emojiGridInner"></div>
+                            <div class="emoji-hint">Izberi ikono za navado</div>
+                        </div>
+                    </div>
                     <input type="text" id="habitName" name="ime_navade" class="form-input"
-                        placeholder="Vnesite ime navade" required style="flex: 1;">
+                        placeholder="Ime navade" required style="flex: 1;">
                 </div>
             </div>
 
@@ -150,9 +162,6 @@
     </div>
 </div>
 <script>
-    // ---------------------------------------------
-    // LOGIKA ZA DROPDOWN DNEVOV
-    // ---------------------------------------------
     const frequencySelect = document.getElementById('frequencySelect');
     const daysDropdown = document.getElementById('daysDropdown');
     const daysButton = document.getElementById('daysButton');
@@ -212,5 +221,69 @@
     });
 
     updateDaysButtonText();
+
+    const EMOJIS = [
+        '🏃','🚴','🏋️','🧘','🏊','⚽','🎾','🥊',
+        '📚','📖','✍️','🎓','💡','🔬','💻','🎯',
+        '💧','🥗','🥤','🍎','😴','🧖','🌿','🌱',
+        '🧹','🏠','💰','💼','📊','⏰','✅','🔥',
+        '🎵','🎨','📷','🎮','❤️','🌅','⭐','🧠',
+    ];
+
+    const emojiInput   = document.getElementById('emojiInput');
+    const emojiBtn     = document.getElementById('emojiBtn');
+    const emojiDisplay = document.getElementById('emojiDisplay');
+    const emojiClear   = document.getElementById('emojiClearBtn');
+    const emojiGrid    = document.getElementById('emojiGrid');
+    const emojiInner   = document.getElementById('emojiGridInner');
+
+    EMOJIS.forEach(function(em) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = em;
+        btn.addEventListener('click', function() {
+            emojiInput.value   = em;
+            emojiDisplay.textContent = em;
+            emojiBtn.classList.remove('empty');
+            emojiClear.classList.add('visible');
+            emojiGrid.classList.remove('open');
+        });
+        emojiInner.appendChild(btn);
+    });
+
+    emojiBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        emojiGrid.classList.toggle('open');
+    });
+
+    // Počisti emoji
+    emojiClear.addEventListener('click', function(e) {
+        e.stopPropagation();
+        emojiInput.value = '';
+        emojiDisplay.textContent = '+';
+        emojiBtn.classList.add('empty');
+        emojiClear.classList.remove('visible');
+    });
+
+    // Zapri ob kliku zunaj
+    document.addEventListener('click', function(e) {
+        if (!emojiBtn.contains(e.target) && !emojiGrid.contains(e.target)) {
+            emojiGrid.classList.remove('open');
+        }
+    });
+
+    // Javna funkcija za predpolnitev emoji ob urejanju
+    window.setHabitEmoji = function(em) {
+        emojiInput.value = em || '';
+        if (em) {
+            emojiDisplay.textContent = em;
+            emojiBtn.classList.remove('empty');
+            emojiClear.classList.add('visible');
+        } else {
+            emojiDisplay.textContent = '+';
+            emojiBtn.classList.add('empty');
+            emojiClear.classList.remove('visible');
+        }
+    };
 
 </script>

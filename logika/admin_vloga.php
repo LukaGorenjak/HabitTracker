@@ -14,16 +14,19 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['id_uporabnika']) || e
     exit();
 }
 
+if (!isset($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'] ?? '')) {
+    echo json_encode(['success' => false, 'error' => 'Neveljavna seja.']);
+    exit();
+}
+
 $targetId = (int)$_POST['id_uporabnika'];
 $vloga    = $_POST['vloga'];
 
-// Dovoljeni vrednosti vloge
 if (!in_array($vloga, ['uporabnik', 'admin'])) {
     echo json_encode(['success' => false, 'error' => 'Neveljavna vloga.']);
     exit();
 }
 
-// Admin ne more spremeniti lastne vloge
 if ($targetId === (int)$_SESSION['user_id']) {
     echo json_encode(['success' => false, 'error' => 'Ne moreš spremeniti lastne vloge.']);
     exit();

@@ -36,6 +36,7 @@ $currentUser = $stmt->fetch();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin – HabitFlow</title>
     <link rel="stylesheet" href="ostalo/style.css">
+    <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 </head>
 <body class="dashboard-body">
 <div class="layout" id="layout">
@@ -45,7 +46,7 @@ $currentUser = $stmt->fetch();
         <div class="top-nav">
             <div class="top-nav-left">
                 <button class="hamburger-btn" id="hamburgerBtn">&#9776;</button>
-                <span class="nav-btn active">Admin panel</span>
+                <span class="nav-active-label">Admin panel</span>
             </div>
             <div class="top-nav-right">
                 <span class="habit-focus-name">HabitFlow Admin</span>
@@ -125,6 +126,9 @@ $currentUser = $stmt->fetch();
 </div>
 
 <script>
+    // CSRF token
+    var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+
     // Stubi – navigacija.php kliče te funkcije, ki ne obstajajo na admin strani
     function openNastavitve() {}
     function setDelDnevaFilter() {}
@@ -151,10 +155,13 @@ $currentUser = $stmt->fetch();
             fetch('logika/admin_vloga.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id_uporabnika=' + encodeURIComponent(id) + '&vloga=' + encodeURIComponent(vloga)
+                body: 'id_uporabnika=' + encodeURIComponent(id) + '&vloga=' + encodeURIComponent(vloga) + '&csrf_token=' + encodeURIComponent(CSRF)
             })
             .then(function(r) { return r.json(); })
-            .then(function(d) { if (!d.success) alert('Napaka: ' + (d.error || 'Neznana napaka')); });
+            .then(function(d) {
+                if (d.success) showToast('Vloga posodobljena.');
+                else showToast('Napaka: ' + (d.error || 'Neznana napaka'), 'error');
+            });
         });
     });
 
@@ -167,14 +174,14 @@ $currentUser = $stmt->fetch();
             fetch('logika/admin_izbrisi_uporabnika.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'id_uporabnika=' + encodeURIComponent(id)
+                body: 'id_uporabnika=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(CSRF)
             })
             .then(function(r) { return r.json(); })
             .then(function(d) {
                 if (d.success) {
                     document.getElementById('user-row-' + id).remove();
                 } else {
-                    alert('Napaka: ' + (d.error || 'Neznana napaka'));
+                    showToast('Napaka: ' + (d.error || 'Neznana napaka'), 'error');
                 }
             });
         });
