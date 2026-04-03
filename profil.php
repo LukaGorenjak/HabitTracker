@@ -45,7 +45,6 @@ $profilSlika = $currentUser['profilna_slika']
         <div class="main pomo-main">
             <div class="pomo-card profil-card">
 
-                <!-- Profilna slika -->
                 <div class="profil-slika-section">
                     <div class="profil-slika-wrap">
                         <img id="profilPreview" src="<?php echo $profilSlika; ?>" alt="Profil" class="profil-preview-img">
@@ -54,7 +53,6 @@ $profilSlika = $currentUser['profilna_slika']
                     </div>
                 </div>
 
-                <!-- Forma -->
                 <form id="profilForm" style="width:100%;">
 
                     <div class="form-group">
@@ -99,7 +97,6 @@ $profilSlika = $currentUser['profilna_slika']
 </div>
 
 <script>
-    // Hamburger
     document.getElementById('hamburgerBtn').addEventListener('click', function(e) {
         e.stopPropagation();
         document.getElementById('layout').classList.toggle('sidebar-open');
@@ -109,7 +106,6 @@ $profilSlika = $currentUser['profilna_slika']
     });
     document.getElementById('sidebar').addEventListener('click', function(e) { e.stopPropagation(); });
 
-    // Predogled slike pred nalaganjem
     document.getElementById('profilnaSlika').addEventListener('change', function() {
         var file = this.files[0];
         if (file) {
@@ -121,10 +117,8 @@ $profilSlika = $currentUser['profilna_slika']
         }
     });
 
-    // CSRF token
     var CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
-    // Pošlji formo z AJAX
     document.getElementById('profilForm').addEventListener('submit', function(e) {
         e.preventDefault();
 
@@ -134,7 +128,6 @@ $profilSlika = $currentUser['profilna_slika']
 
         var formData = new FormData(this);
         formData.append('csrf_token', CSRF);
-        // Dodaj sliko ročno (ker input ni znotraj forme)
         var slikaInput = document.getElementById('profilnaSlika');
         if (slikaInput.files[0]) {
             formData.append('profilna_slika', slikaInput.files[0]);
@@ -148,7 +141,6 @@ $profilSlika = $currentUser['profilna_slika']
                     errorEl.style.display = 'block';
                     return;
                 }
-                // Posodobi sidebar ime in sliko takoj
                 var sidebarIme = document.querySelector('.profile h2');
                 if (sidebarIme) sidebarIme.textContent = data.ime;
                 if (data.profilna_slika) {

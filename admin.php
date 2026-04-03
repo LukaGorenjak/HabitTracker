@@ -13,6 +13,26 @@ $steviloUporabnikov = (int)$pdo->query("SELECT COUNT(*) FROM uporabniki")->fetch
 $steviloNavad       = (int)$pdo->query("SELECT COUNT(*) FROM navade")->fetchColumn();
 $steviloDnevnikov   = (int)$pdo->query("SELECT COUNT(*) FROM dnevniki WHERE opravljeno = 1")->fetchColumn();
 
+// Graf: opravljene navade po dnevih (zadnjih 30 dni)
+$grafStmt = $pdo->query("
+    SELECT DATE(datum) AS dan, COUNT(*) AS stevilo
+    FROM dnevniki
+    WHERE opravljeno = 1
+      AND datum >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+    GROUP BY DATE(datum)
+    ORDER BY dan ASC
+");
+$grafPodatki = $grafStmt->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Zapolni vse dni (tudi tiste brez podatkov = 0)
+$grafLabels = [];
+$grafVrednosti = [];
+for ($i = 29; $i >= 0; $i--) {
+    $dan = date('Y-m-d', strtotime("-$i days"));
+    $grafLabels[]    = date('d.m.', strtotime($dan));
+    $grafVrednosti[] = isset($grafPodatki[$dan]) ? (int)$grafPodatki[$dan] : 0;
+}
+
 // Vsi uporabniki z številom navad
 $stmt = $pdo->query("
     SELECT u.id_uporabnika, u.uporabnisko_ime, u.email, u.vloga,
@@ -37,6 +57,7 @@ $currentUser = $stmt->fetch();
     <title>Admin – HabitFlow</title>
     <link rel="stylesheet" href="ostalo/style.css">
     <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="dashboard-body">
 <div class="layout" id="layout">
@@ -68,6 +89,14 @@ $currentUser = $stmt->fetch();
                 <div class="admin-stat-card">
                     <div class="admin-stat-num"><?php echo $steviloDnevnikov; ?></div>
                     <div class="admin-stat-label">Opravljeni vnosi</div>
+                </div>
+            </div>
+
+            <!-- Graf opravljenih navad -->
+            <div class="admin-table-wrap">
+                <h3 class="admin-section-title">Opravljene navade – zadnjih 30 dni</h3>
+                <div style="position:relative; height:260px; padding: 0 8px;">
+                    <canvas id="adminGrafNavad"></canvas>
                 </div>
             </div>
 
@@ -128,6 +157,56 @@ $currentUser = $stmt->fetch();
 <script>
     // CSRF token
     var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+
+    // Graf opravljenih navad
+    (function() {
+        var labels = <?php echo json_encode($grafLabels); ?>;
+        var data   = <?php echo json_encode($grafVrednosti); ?>;
+
+        var ctx = document.getElementById('adminGrafNavad').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Opravljene navade',
+                    data: data,
+                    backgroundColor: 'rgba(74, 157, 111, 0.6)',
+                    borderColor: 'rgba(74, 157, 111, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ' ' + ctx.parsed.y + ' navad';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            autoSkip: true,
+                            maxTicksLimit: 15
+                        },
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: { precision: 0 }
+                    }
+                }
+            }
+        });
+    })();
 
     // Stubi – navigacija.php kliče te funkcije, ki ne obstajajo na admin strani
     function openNastavitve() {}

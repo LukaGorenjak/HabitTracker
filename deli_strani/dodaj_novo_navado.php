@@ -256,7 +256,6 @@
         emojiGrid.classList.toggle('open');
     });
 
-    // Počisti emoji
     emojiClear.addEventListener('click', function(e) {
         e.stopPropagation();
         emojiInput.value = '';
@@ -265,14 +264,12 @@
         emojiClear.classList.remove('visible');
     });
 
-    // Zapri ob kliku zunaj
     document.addEventListener('click', function(e) {
         if (!emojiBtn.contains(e.target) && !emojiGrid.contains(e.target)) {
             emojiGrid.classList.remove('open');
         }
     });
 
-    // Javna funkcija za predpolnitev emoji ob urejanju
     window.setHabitEmoji = function(em) {
         emojiInput.value = em || '';
         if (em) {

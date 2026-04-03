@@ -40,29 +40,24 @@ $kategorijeList = $stmt->fetchAll();
         <div class="main pomo-main">
             <div class="pomo-card">
 
-                <!-- Izbira načina -->
                 <div class="pomo-modes">
                     <button class="pomo-mode-btn pomo-active" onclick="setMode(25, 'Fokus', this)">Fokus</button>
                     <button class="pomo-mode-btn" onclick="setMode(5,  'Kratki odmor', this)">Kratki odmor</button>
                     <button class="pomo-mode-btn" onclick="setMode(15, 'Dolgi odmor', this)">Dolgi odmor</button>
                 </div>
 
-                <!-- Čas -->
                 <div class="pomo-time" id="pomoTime">25:00</div>
                 <div class="pomo-label" id="pomoLabel">Fokus</div>
 
-                <!-- Progres vrstica -->
                 <div class="pomo-bar-wrap">
                     <div class="pomo-bar-fill" id="pomoBar"></div>
                 </div>
 
-                <!-- Gumbi -->
                 <div class="pomo-btns">
                     <button class="pomo-btn-start" id="pomoStartBtn" onclick="toggleTimer()">Start</button>
                     <button class="pomo-btn-reset" onclick="resetTimer()">Reset</button>
                 </div>
 
-                <!-- Seje -->
                 <div class="pomo-sessions">
                     Seja <span id="pomoSession">1</span> / 4
                     <div class="pomo-dots">
@@ -79,14 +74,12 @@ $kategorijeList = $stmt->fetchAll();
 </div>
 
 <script>
-    // --- Spremenljivke ---
     var skupajSekund = 25 * 60;
     var preostalo = 25 * 60;
     var tece = false;
     var timer = null;
     var seja = 1;
 
-    // --- Nastavi način (fokus / odmor) ---
     function setMode(minute, naziv, gumb) {
         clearInterval(timer);
         tece         = false;
@@ -105,7 +98,6 @@ $kategorijeList = $stmt->fetchAll();
         prikaziCas();
     }
 
-    // --- Start / Pavza ---
     function toggleTimer() {
         if (tece) {
             clearInterval(timer);
@@ -128,7 +120,6 @@ $kategorijeList = $stmt->fetchAll();
         }
     }
 
-    // --- Reset ---
     function resetTimer() {
         clearInterval(timer);
         tece      = false;
@@ -138,7 +129,6 @@ $kategorijeList = $stmt->fetchAll();
         prikaziCas();
     }
 
-    // --- Pokaži čas v formatu MM:SS ---
     function prikaziCas() {
         var m = Math.floor(preostalo / 60);
         var s = preostalo % 60;
@@ -147,13 +137,11 @@ $kategorijeList = $stmt->fetchAll();
         document.title = besedilo + ' – Habit Flow';
     }
 
-    // --- Posodobi progres vrstico ---
     function osvežiBar() {
         var procent = (preostalo / skupajSekund) * 100;
         document.getElementById('pomoBar').style.width = procent + '%';
     }
 
-    // --- Ko timer doseže 0 ---
     function konecTimerja() {
         if (document.getElementById('pomoLabel').textContent === 'Fokus') {
             if (seja >= 4) {
@@ -165,7 +153,6 @@ $kategorijeList = $stmt->fetchAll();
         }
     }
 
-    // --- Posodobi prikaz seje in pike ---
     function osvežiTocke() {
         document.getElementById('pomoSession').textContent = seja;
         for (var i = 1; i <= 4; i++) {
@@ -178,7 +165,6 @@ $kategorijeList = $stmt->fetchAll();
         }
     }
 
-    // --- Hamburger meni ---
     document.getElementById('hamburgerBtn').addEventListener('click', function(e) {
         e.stopPropagation();
         document.getElementById('layout').classList.toggle('sidebar-open');

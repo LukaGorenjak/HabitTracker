@@ -18,7 +18,6 @@ if ($isLoggedIn) {
     $stmt->execute([$_SESSION['user_id']]);
     $navade = $stmt->fetchAll();
 
-    // Which habits has the user already logged today?
     $today = date('Y-m-d');
     $stmt  = $pdo->prepare("
         SELECT d.id_navade
@@ -29,17 +28,14 @@ if ($isLoggedIn) {
     $stmt->execute([$_SESSION['user_id'], $today]);
     $logged_today = array_map('intval', array_column($stmt->fetchAll(), 'id_navade'));
 
-    // Current user data for settings modal
     $stmt = $pdo->prepare("SELECT uporabnisko_ime, email, profilna_slika FROM uporabniki WHERE id_uporabnika = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $currentUser = $stmt->fetch();
 
-    // Kategorije za sidebar
     $stmt = $pdo->prepare("SELECT id_kategorije, ime, barva FROM kategorije WHERE id_uporabnika = ? ORDER BY ime ASC");
     $stmt->execute([$_SESSION['user_id']]);
     $kategorijeList = $stmt->fetchAll();
 
-    // Statistika uporabnika
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM dnevniki d JOIN navade n ON d.id_navade = n.id_navade WHERE n.id_uporabnika = ? AND d.opravljeno = 1");
     $stmt->execute([$_SESSION['user_id']]);
     $statOpravljenih = (int)$stmt->fetchColumn();
@@ -64,7 +60,6 @@ if ($isLoggedIn) {
     <meta name="csrf-token" content="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
     <?php endif; ?>
 </head>
-<!-- ============================================= NON-LOGGED IN HTML ============================================== -->
 <?php if (!$isLoggedIn): ?>
 <body class="landing-body">
     <nav class="landing-nav">
@@ -85,7 +80,6 @@ if ($isLoggedIn) {
     </div>
 </body>
 
-<!-- ============================================= LOGGED IN HTML ============================================== -->
 <?php else: ?>
 <body class="dashboard-body">
     <div class="layout" id="layout">
@@ -124,36 +118,23 @@ if ($isLoggedIn) {
 
     <script>
         // ===================================================
-        // PODATKI IZ PHP — PHP je že zagnal in nam dal te vrednosti
-        // json_encode() pretvori PHP array → JSON niz → JS ga razume kot array objektov
+        // PODATKI IZ PHP
         // ===================================================
         const MONTH_NAMES_SL = ['Januar','Februar','Marec','April','Maj','Junij',
                                  'Julij','Avgust','September','Oktober','November','December'];
 
-        // habits = array vseh navad tega uporabnika (pridobljeno iz baze prek PHP)
-        // JSON_HEX_TAG|JSON_HEX_QUOT zaščiti pred XSS (znaki < > " se zakodirajo)
         const habits = <?php echo json_encode($navade, JSON_HEX_TAG | JSON_HEX_QUOT); ?>;
-
-        // loggedToday = array ID-jev navad, ki so bile danes že zabeležene (opravljeno=1)
         const loggedToday = <?php echo json_encode($logged_today); ?>;
-
-        // kategorijeData = kategorije tega uporabnika (za sidebar in filtriranje)
         const kategorijeData = <?php echo json_encode($kategorijeList ?? []); ?>;
-
-        // currentUser = podatki prijavljenega uporabnika (ime, email, pot do profilne slike)
         const currentUser = <?php echo json_encode([
             'ime'           => $currentUser['uporabnisko_ime'] ?? '',
             'email'         => $currentUser['email']          ?? '',
             'profilna_slika'=> $currentUser['profilna_slika'] ?? null,
         ]); ?>;
 
-        // CSRF token za zaščito AJAX zahtevkov
         const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
-        // selectedHabitId = ID trenutno izbrane navade (null = nobena ni izbrana)
         let selectedHabitId = null;
-
-        // Iskalni niz in filtri (prazno = prikaži vse)
         let searchQuery      = '';
         let filterKategorija = '';
         let filterDelDneva   = '';
@@ -161,18 +142,12 @@ if ($isLoggedIn) {
         // ===================================================
         // POMOŽNE FUNKCIJE
         // ===================================================
-
-        // escapeHtml: zaščiti pred XSS napadom
-        // Če bi ime navade vsebovalo script alert(1) script, bi to postalo varno besedilo
-        // Trik: browser sam zakodira HTML znake, ko jih vstavljamo kot textNode
         function escapeHtml(str) {
-            const div = document.createElement('div');        // ustvari začasni div
-            div.appendChild(document.createTextNode(str ?? '')); // vstavi kot čisto besedilo (ne HTML)
-            return div.innerHTML;                             // preberi nazaj — znaki so zdaj zakodirani
+            const div = document.createElement('div');
+            div.appendChild(document.createTextNode(str ?? ''));
+            return div.innerHTML;
         }
 
-        // formatDate: pretvori "2025-03-13" v "13. marca 2025" (slovenščina)
-        // toLocaleDateString('sl-SI') samodejno formatira glede na slovensko lokalizacijo
         function formatDate(dateStr) {
             if (!dateStr) return '-';
             const d = new Date(dateStr);
@@ -182,12 +157,9 @@ if ($isLoggedIn) {
         // ===================================================
         // IZRIS SEZNAMA NAVAD
         // ===================================================
-
-        // renderHabits: izriše celoten seznam navad iz array-a habits
-        // Kliče se ob zagonu, po beleženju in po brisanju — vedno iz svežih podatkov
         function renderHabits() {
             const habitList = document.getElementById('habitList');
-            habitList.innerHTML = ''; // pobriši obstoječi seznam
+            habitList.innerHTML = '';
 
             // Filtriraj navade glede na iskalni niz, kategorijo in del dneva
             const q = searchQuery.toLowerCase();
@@ -199,7 +171,6 @@ if ($isLoggedIn) {
                 return imeMatch && katMatch && delMatch;
             });
 
-            // Če ni navad (ali rezultatov), prikaži sporočilo
             if (habits.length === 0) {
                 habitList.innerHTML = '<div class="habit-list-empty">Še nimate dodanih navad.<br>Kliknite "+ Dodaj navado" za začetek.</div>';
                 return;
@@ -209,14 +180,12 @@ if ($isLoggedIn) {
                 return;
             }
 
-            // Za vsako filtrirano navado ustvari HTML element in ga dodaj na stran
             filtered.forEach((habit) => {
                 const item = document.createElement('div');
                 item.className = 'habit-item';
-                item.dataset.id = habit.id_navade; // shranimo ID za kasnejši dostop
+                item.dataset.id = habit.id_navade;
 
-                const dotColor = habit.kategorija_barva || '#4a9d6f'; // barva kategorije ali privzeta zelena
-                // Preverimo, ali je ta navada v loggedToday array-u (== bila zabeležena danes)
+                const dotColor = habit.kategorija_barva || '#4a9d6f';
                 const isLogged = loggedToday.includes(Number(habit.id_navade));
 
                 const goal = parseInt(habit.cilj_dni) || 0;
@@ -225,7 +194,6 @@ if ($isLoggedIn) {
                     ? `<div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${Math.min((streak/goal)*100,100).toFixed(1)}%; background:${dotColor};"></div></div>`
                     : '';
 
-                // template literal: ustvari HTML niz z vstavljenimi vrednostmi
                 const iconEl = habit.emoji
                     ? `<span class="habit-emoji" style="font-size:20px; margin-right:4px; flex-shrink:0;">${escapeHtml(habit.emoji)}</span>`
                     : `<div class="habit-dot" style="background: ${dotColor};"></div>`;
@@ -240,13 +208,11 @@ if ($isLoggedIn) {
                     ${progressBar}
                 `;
 
-                // e.stopPropagation() prepreči, da bi klik na gumb sprožil tudi klik na celoten item
                 item.querySelector('.habit-log-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     toggleLog(habit.id_navade);
                 });
 
-                // Klik na celoten element odpre podrobnosti v desnem panelu
                 item.addEventListener('click', () => selectHabit(habit.id_navade));
                 habitList.appendChild(item);
             });
@@ -255,66 +221,54 @@ if ($isLoggedIn) {
         // ===================================================
         // BELEŽENJE NAVADE ZA DANES (toggle)
         // ===================================================
-
-        // toggleLog: zabeleži ali odznači navado za danes brez ponovnega nalaganja strani (AJAX)
         function toggleLog(id) {
-            // fetch() pošlje POST zahtevek na PHP — kot da bi oddali HTML formo, brez page reload
             fetch('logika/zabeleznaj_navado.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `id_navade=${encodeURIComponent(id)}&csrf_token=${encodeURIComponent(CSRF)}`
             })
-            .then(res => res.json())    // PHP odgovori z JSON nizom → pretvorimo v JS objekt
+            .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     const habitId = Number(id);
                     const idx = loggedToday.indexOf(habitId);
 
-                    // Posodobimo lokalni loggedToday array glede na PHP odgovor
                     if (data.logged) {
-                        if (idx === -1) loggedToday.push(habitId); // dodamo, če še ni
+                        if (idx === -1) loggedToday.push(habitId);
                     } else {
-                        if (idx !== -1) loggedToday.splice(idx, 1); // odstranimo, če je
+                        if (idx !== -1) loggedToday.splice(idx, 1);
                     }
 
-                    // Posodobimo streak v lokalnem habits array (brez ponovnega branja baze)
                     const habit = habits.find(h => Number(h.id_navade) === habitId);
                     if (habit) habit.streak = data.streak;
 
-                    renderHabits(); // osveži seznam (ikona ○/✓ in streak badge)
+                    renderHabits();
 
-                    // Če je ta navada trenutno odprta v desnem panelu, posodobi tudi tam
                     if (selectedHabitId && Number(selectedHabitId) === habitId) {
                         document.getElementById('detailStreak').textContent = data.streak;
                         selectHabit(id);
                     }
                 }
             })
-            .catch(() => {}); // tiho ignoriramo napake omrežja
+            .catch(() => {});
         }
 
         // ===================================================
         // PRIKAZ PODROBNOSTI NAVADE (desni panel)
         // ===================================================
-
-        // selectHabit: ko kliknemo navado, zapolni desni panel z vsemi podrobnostmi
         function selectHabit(id) {
             selectedHabitId = id;
 
-            // Poiščemo navado v lokalnem array-u (ne gre v bazo — podatki so že v JS)
             const habit = habits.find(h => h.id_navade == id);
             if (!habit) return;
 
-            // Skrijemo sporočilo "Izberite navado" in prikažemo vsebino
             document.getElementById('detailEmpty').style.display = 'none';
             document.getElementById('detailContent').style.display = 'block';
 
-            // Zapolnimo osnovne podatke
             document.getElementById('detailTitle').textContent = habit.ime_navade;
             document.getElementById('detailCategoryDot').style.background = habit.kategorija_barva || '#4a9d6f';
             document.getElementById('detailStreak').textContent = habit.streak || 0;
 
-            // Chart.js doughnut — prikaže progress do streak cilja
             const progressSection = document.getElementById('detailProgressSection');
             const goalDni = parseInt(habit.cilj_dni) || 0;
             if (goalDni > 0) {
@@ -346,41 +300,33 @@ if ($isLoggedIn) {
 
             document.getElementById('detailKategorija').textContent = habit.kategorija_ime || '-';
 
-            // Prevedemo interno vrednost ponavljanja v slovensko besedilo
             const ponavljanjeMap = { dnevno: 'Dnevno', tedensko: 'Tedensko', mesecno: 'Mesečno' };
             document.getElementById('detailPonavljanje').textContent = ponavljanjeMap[habit.ponavljanje] || habit.ponavljanje;
 
-            // Vrstica "Dnevi" — prikaže se samo pri tedenskem ponavljanju s specifičnimi dnevi
             const dneviRow = document.getElementById('detailDneviRow');
             if (habit.ponavljanje === 'tedensko' && habit.izbrani_dnevi && habit.izbrani_dnevi !== 'vsak_dan') {
                 dneviRow.style.display = 'flex';
-                // Prevedemo angleška imena dni v slovenščino
                 const dayMap = { ponedeljek: 'Ponedeljek', torek: 'Torek', sreda: 'Sreda', cetrtek: 'Četrtek', petek: 'Petek', sobota: 'Sobota', nedelja: 'Nedelja' };
-                // split(',') razdeli "ponedeljek,sreda" → ['ponedeljek', 'sreda'], nato prevedemo vsak dan
                 const days = habit.izbrani_dnevi.split(',').map(d => dayMap[d.trim()] || d).join(', ');
                 document.getElementById('detailDnevi').textContent = days;
             } else {
-                dneviRow.style.display = 'none'; // skrijemo vrstico, če ni relevantna
+                dneviRow.style.display = 'none';
             }
 
-            // Cilj: sestavimo niz npr. "30 minut na dan"
             const obdobjeMap = { na_dan: 'na dan', na_teden: 'na teden', na_mesec: 'na mesec' };
             document.getElementById('detailCilj').textContent =
                 `${habit.cilj_kolicina} ${habit.cilj_enota} ${obdobjeMap[habit.cilj_obdobje] || habit.cilj_obdobje}`;
 
-            // Vrstica "Del dneva" — prikaže se samo, če je nastavljeno
             const delDnevaRow = document.getElementById('detailDelDnevaRow');
             if (habit.del_dneva && habit.del_dneva.trim()) {
                 delDnevaRow.style.display = 'flex';
                 const delMap = { zjutraj: 'Zjutraj', popoldne: 'Popoldne', zvecer: 'Zvečer' };
-                // Prevedemo "zjutraj,zvecer" → "Zjutraj, Zvečer"
                 document.getElementById('detailDelDneva').textContent =
                     habit.del_dneva.split(',').map(d => delMap[d.trim()] || d).join(', ');
             } else {
                 delDnevaRow.style.display = 'none';
             }
 
-            // Vrstica "Opis" — prikaže se samo, če je vnesen opis
             const opisRow = document.getElementById('detailOpisRow');
             if (habit.opis && habit.opis.trim()) {
                 opisRow.style.display = 'flex';
@@ -389,27 +335,20 @@ if ($isLoggedIn) {
                 opisRow.style.display = 'none';
             }
 
-            // Vizualno označimo izbran element v seznamu
             document.querySelectorAll('.habit-item').forEach(el => el.classList.remove('selected'));
             const selectedEl = document.querySelector(`.habit-item[data-id="${id}"]`);
             if (selectedEl) selectedEl.classList.add('selected');
 
-            // Povežemo gumba Uredi in Izbriši s to konkretno navado
-            // onclick se prepiše vsakič, ko izberemo navado — da vedno deluje na pravilno
             document.getElementById('editHabitBtn').onclick = () => openEditHabitForm(habit);
             document.getElementById('deleteHabitBtn').onclick = () => deleteHabit(habit.id_navade, habit.ime_navade);
 
-            // Naložimo mesečni koledar za to navado
             loadHabitChart(habit.id_navade);
         }
 
         // ===================================================
         // BRISANJE NAVADE
         // ===================================================
-
-        // deleteHabit: po potrditvi zbriše navado prek AJAX in jo odstrani iz UI
         function deleteHabit(id, name) {
-            // Potrditveno okno — če kliknemo "Prekliči", funkcija takoj konča
             if (!confirm(`Ste prepričani, da želite izbrisati navado "${name}"?`)) return;
 
             fetch('logika/izbrisi_navado.php', {
@@ -420,13 +359,11 @@ if ($isLoggedIn) {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    // Poiščemo index navade v lokalnem array-u in jo odstranimo
                     const idx = habits.findIndex(h => h.id_navade == id);
-                    if (idx !== -1) habits.splice(idx, 1); // splice(index, 1) odstrani 1 element
+                    if (idx !== -1) habits.splice(idx, 1);
 
-                    renderHabits(); // osvežimo seznam (navada izgine)
+                    renderHabits();
 
-                    // Skrijemo desni panel
                     document.getElementById('detailEmpty').style.display = 'block';
                     document.getElementById('detailContent').style.display = 'none';
                     selectedHabitId = null;
@@ -438,47 +375,35 @@ if ($isLoggedIn) {
         }
 
         // ===================================================
-        // UREJANJE NAVADE — predizpolni modal z obstoječimi podatki
+        // UREJANJE NAVADE
         // ===================================================
-
-        // openEditHabitForm: odpre isti modal kot za dodajanje, a zapolnjen z obstoječimi podatki
-        // To je primer "koda, ki naredi dve stvari" — isti modal za dodaj in uredi
         function openEditHabitForm(habit) {
-            // Zapolnimo vsa polja z obstoječimi vrednostmi
             document.getElementById('habitName').value = habit.ime_navade;
             document.getElementById('habitDescription').value = habit.opis || '';
             document.getElementById('frequencySelect').value = habit.ponavljanje;
-            // Skrito polje id_navade — PHP ga prebere in ve, katero navado posodabljamo
             document.getElementById('editHabitId').value = habit.id_navade;
-
-            // Spremenimo action forme — namesto shrani_navado.php gre na uredi_navado.php
             document.getElementById('habitForm').action = 'logika/uredi_navado.php';
             document.getElementById('formTitle').textContent = 'Uredi navado';
             document.querySelector('#habitForm .btn-save').textContent = 'Shrani spremembe';
 
-            // Dropdown z dnevi — prikaže se samo pri tedenskem ponavljanju
             if (habit.ponavljanje === 'tedensko') {
                 document.getElementById('daysDropdown').style.display = 'block';
-                // Najprej odkljukamo vse
                 document.querySelectorAll('#daysContent input[type="checkbox"]').forEach(cb => cb.checked = false);
                 if (habit.izbrani_dnevi && habit.izbrani_dnevi !== 'vsak_dan') {
-                    // Preslikava: slovensko ime dneva → HTML id checkboxa
                     const dayIdMap = { ponedeljek: 'monday', torek: 'tuesday', sreda: 'wednesday', cetrtek: 'thursday', petek: 'friday', sobota: 'saturday', nedelja: 'sunday' };
                     habit.izbrani_dnevi.split(',').forEach(day => {
                         const cbId = dayIdMap[day.trim()];
-                        if (cbId) document.getElementById(cbId).checked = true; // kljukamo pravilne
+                        if (cbId) document.getElementById(cbId).checked = true;
                     });
                 }
-                updateDaysButtonText(); // posodobimo besedilo gumba ("Ponedeljek, Sreda...")
+                updateDaysButtonText();
             } else {
                 document.getElementById('daysDropdown').style.display = 'none';
             }
 
-            // Nastavimo kategorijo v selectu
             const katSelect = document.querySelector('select[name="kategorija"]');
             if (katSelect && habit.kategorija_ime) katSelect.value = habit.kategorija_ime.toLowerCase();
 
-            // Nastavimo cilj (količina, enota, obdobje)
             const kolicina = document.querySelector('input[name="cilj_kolicina"]');
             const enota    = document.querySelector('select[name="cilj_enota"]');
             const obdobje  = document.querySelector('select[name="cilj_obdobje"]');
@@ -488,7 +413,6 @@ if ($isLoggedIn) {
             const ciljDni = document.getElementById('ciljDniInput');
             if (ciljDni)  ciljDni.value  = habit.cilj_dni || '';
 
-            // Predpolni emoji picker
             if (typeof window.setHabitEmoji === 'function') {
                 window.setHabitEmoji(habit.emoji || '');
             }
@@ -499,23 +423,19 @@ if ($isLoggedIn) {
         // ===================================================
         // MODAL ZA DODAJANJE / ZAPIRANJE
         // ===================================================
-
-        // openAddHabitForm: prikaže modal in overlay z dodajanjem CSS razreda 'active'
-        // CSS: .add-habit-form.active { display: block } — modal postane viden
         function openAddHabitForm() {
             document.getElementById('addHabitForm').classList.add('active');
             document.getElementById('overlay').classList.add('active');
         }
 
-        // closeAddHabitForm: zapre modal, ponastavi formo nazaj na "dodaj" stanje
         function closeAddHabitForm() {
             document.getElementById('addHabitForm').classList.remove('active');
             document.getElementById('overlay').classList.remove('active');
             const habitForm = document.getElementById('habitForm');
             if (habitForm) {
-                habitForm.reset();                                          // pobriše vse vnose
-                habitForm.action = 'logika/shrani_navado.php';              // ponastavi action
-                document.getElementById('editHabitId').value = '';          // pobriše skrito ID polje
+                habitForm.reset();
+                habitForm.action = 'logika/shrani_navado.php';
+                document.getElementById('editHabitId').value = '';
                 document.getElementById('formTitle').textContent = 'Nova navada';
                 document.querySelector('#habitForm .btn-save').textContent = 'Shrani';
                 document.getElementById('daysDropdown').style.display = 'none';
@@ -526,8 +446,6 @@ if ($isLoggedIn) {
         // ===================================================
         // STATISTIKA
         // ===================================================
-
-        // openStatistika / closeStatistika
         function openStatistika() {
             document.getElementById('statistikaModal').classList.add('active');
             document.getElementById('overlay').classList.add('active');
@@ -541,52 +459,42 @@ if ($isLoggedIn) {
         // ===================================================
         // MESEČNI KOLEDAR NAVADE
         // ===================================================
+        let calYear    = new Date().getFullYear();
+        let calMonth   = new Date().getMonth() + 1;
+        let calHabitId = null;
 
-        // Spremenljivke za sledenje kateremu mesecu/letu in kateri navadi je odprt koledar
-        let calYear     = new Date().getFullYear();
-        let calMonth    = new Date().getMonth() + 1; // getMonth() vrne 0-11, zato +1
-        let calHabitId  = null;
-
-        // loadHabitChart: vstopna točka — nastavi ID navade in sproži izris
         function loadHabitChart(habitId) {
             calHabitId = habitId;
             renderHabitChart();
         }
 
-        // renderHabitChart: naloži podatke iz baze in izriše mesečno mrežo
         function renderHabitChart() {
             if (!calHabitId) return;
 
             const todayDate   = new Date();
-            // isThisMonth: ali gledamo tekoči mesec (za onemogočanje prihodnjih dni)
             const isThisMonth = calYear === todayDate.getFullYear() && calMonth === todayDate.getMonth() + 1;
             const todayDay    = todayDate.getDate();
 
-            // Barva kategorije za obarvanje opravljenih dni
             const habit = habits.find(h => Number(h.id_navade) === Number(calHabitId));
             const catColor = (habit && habit.kategorija_barva) ? habit.kategorija_barva : '#4a9d6f';
 
             document.getElementById('chartMonthLabel').textContent =
                 `${MONTH_NAMES_SL[calMonth - 1]} ${calYear}`;
 
-            // GET zahtevek na PHP — vrne array datumov ko je bila navada opravljena v tem mesecu
             fetch(`logika/mesecni_dnevnik.php?id_navade=${encodeURIComponent(calHabitId)}&leto=${calYear}&mesec=${calMonth}`)
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) return;
 
-                    // Pretvorimo "2026-03-05" → 5 (samo številka dneva)
                     const loggedDays = data.opravljeni.map(d => parseInt(d.split('-')[2]));
                     const grid = document.getElementById('habitCalendarGrid');
-                    grid.innerHTML = ''; // počistimo prejšnji mesec
+                    grid.innerHTML = '';
 
-                    // Izračunamo na kateri dan v tednu pade 1. dan meseca (po. = 0, ... ne. = 6)
-                    const firstDayRaw = new Date(calYear, calMonth - 1, 1).getDay(); // 0=ned
-                    const firstDay    = (firstDayRaw + 6) % 7; // pretvorimo: pon=0 ... ned=6
-                    const daysInMonth = new Date(calYear, calMonth, 0).getDate(); // zadnji dan meseca
-                    const daysInPrev  = new Date(calYear, calMonth - 1, 0).getDate(); // dni prejšnjega
+                    const firstDayRaw = new Date(calYear, calMonth - 1, 1).getDay();
+                    const firstDay    = (firstDayRaw + 6) % 7;
+                    const daysInMonth = new Date(calYear, calMonth, 0).getDate();
+                    const daysInPrev  = new Date(calYear, calMonth - 1, 0).getDate();
 
-                    // Zapolnimo začetek mreže z dnevi prejšnjega meseca (sivo, neklikljivo)
                     for (let i = 0; i < firstDay; i++) {
                         const cell = document.createElement('div');
                         cell.className = 'cal-day cal-day-other';
@@ -594,27 +502,22 @@ if ($isLoggedIn) {
                         grid.appendChild(cell);
                     }
 
-                    // Izrišemo vse dni tekočega meseca
                     for (let d = 1; d <= daysInMonth; d++) {
-                        const cell    = document.createElement('div');
-                        const done    = loggedDays.includes(d);      // ali je dan opravljen?
-                        const isToday = isThisMonth && d === todayDay; // ali je danes?
-                        const future  = isThisMonth && d > todayDay;   // ali je prihodnji dan?
+                        const cell = document.createElement('div');
+                        const done = loggedDays.includes(d);
+                        const isToday = isThisMonth && d === todayDay;
+                        const future  = isThisMonth && d > todayDay;
 
-                        // Sestavimo CSS razred iz kombinacije pogojev
                         cell.className = 'cal-day' +
                             (isToday ? ' cal-day-today' : '') +
                             (future  ? ' cal-day-future' : '') +
                             (done    ? ' cal-day-done'   : '');
                         cell.textContent = d;
 
-                        // Opravljeni dnevi dobijo barvo kategorije kot ozadje
                         if (done) cell.style.background = catColor;
 
-                        // Prihodnji dnevi niso klikljivi — ne moremo beležiti v prihodnosti
                         if (!future) {
                             cell.addEventListener('click', () => {
-                                // Sestavimo datum v formatu YYYY-MM-DD (MySQL format)
                                 const datum = `${calYear}-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                                 toggleChartDay(datum);
                             });
@@ -622,7 +525,6 @@ if ($isLoggedIn) {
                         grid.appendChild(cell);
                     }
 
-                    // Zapolnimo konec mreže z dnevi naslednjega meseca (sivo, neklikljivo)
                     const total     = firstDay + daysInMonth;
                     const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
                     for (let i = 1; i <= remaining; i++) {
@@ -635,8 +537,6 @@ if ($isLoggedIn) {
                 .catch(() => {});
         }
 
-        // toggleChartDay: zabeleži/odznači specifičen datum v koledarju (ne nujno danes)
-        // Enako kot toggleLog, le da pošljemo tudi datum namesto da vzamemo danes
         function toggleChartDay(datum) {
             fetch('logika/zabeleznaj_navado.php', {
                 method: 'POST',
@@ -647,9 +547,7 @@ if ($isLoggedIn) {
             .then(data => {
                 if (!data.success) return;
 
-                // Če smo kliknili na danes, moramo posodobiti tudi loggedToday array
-                // (ker ta array upravlja ○/✓ gumb v seznamu navad)
-                const todayStr = new Date().toISOString().split('T')[0]; // "2026-03-13"
+                const todayStr = new Date().toISOString().split('T')[0];
                 if (datum === todayStr) {
                     const hid = Number(calHabitId);
                     const idx = loggedToday.indexOf(hid);
@@ -657,37 +555,32 @@ if ($isLoggedIn) {
                     else             { if (idx !== -1) loggedToday.splice(idx, 1); }
                 }
 
-                // Posodobimo streak v lokalnem array-u in v panelu
                 const habit = habits.find(h => Number(h.id_navade) === Number(calHabitId));
                 if (habit) habit.streak = data.streak;
                 document.getElementById('detailStreak').textContent = data.streak;
 
-                renderHabits();     // osvežimo seznam (streak badge)
-                renderHabitChart(); // osvežimo koledar (obarvanost dneva)
+                renderHabits();
+                renderHabitChart();
             })
             .catch(() => {});
         }
 
-        // Navigacija med meseci — ‹ in › gumba
         document.getElementById('chartPrevMonth').addEventListener('click', () => {
             calMonth--;
-            if (calMonth < 1) { calMonth = 12; calYear--; } // december → november lani
+            if (calMonth < 1) { calMonth = 12; calYear--; }
             renderHabitChart();
         });
         document.getElementById('chartNextMonth').addEventListener('click', () => {
             const now = new Date();
-            // Ne dovolimo navigacije v prihodnost (čez tekoči mesec)
             if (calYear === now.getFullYear() && calMonth === now.getMonth() + 1) return;
             calMonth++;
-            if (calMonth > 12) { calMonth = 1; calYear++; } // december → januar naslednje leto
+            if (calMonth > 12) { calMonth = 1; calYear++; }
             renderHabitChart();
         });
 
         // ===================================================
         // DATUM V GLAVI
         // ===================================================
-
-        // setCalendarDate: izpiše trenutni datum v zgornji navigaciji (samo enkrat ob nalaganju)
         function setCalendarDate() {
             const now = new Date();
             document.getElementById('calendarDate').textContent =
@@ -696,10 +589,8 @@ if ($isLoggedIn) {
         setCalendarDate();
 
         // ===================================================
-        // POSLUŠALCI DOGODKOV (Event listeners)
+        // POSLUŠALCI DOGODKOV
         // ===================================================
-
-        // Gumb "+ Dodaj navado" — odpre prazen modal (najprej ponastavimo morebitne podatke od urejanja)
         document.getElementById('addHabitBtn').addEventListener('click', () => {
             document.getElementById('formTitle').textContent = 'Nova navada';
             document.querySelector('#habitForm .btn-save').textContent = 'Shrani';
@@ -708,50 +599,39 @@ if ($isLoggedIn) {
             openAddHabitForm();
         });
 
-        // Klik na overlay (zatemnjen del za modalom) — zapre katerikoli odprt modal
         document.getElementById('overlay').addEventListener('click', () => {
             closeAddHabitForm();
             closeNastavitve();
         });
 
-        // Gumb Prekliči v modalu za navade
         document.getElementById('cancelBtn').addEventListener('click', closeAddHabitForm);
 
         // ===================================================
         // ISKANJE IN FILTRIRANJE
         // ===================================================
-
-        // setDelDnevaFilter: filter navad po delu dneva (zjutraj/popoldne/zvecer)
-        // Drugi klik na isti gumb razklene filter (toggle)
         function setDelDnevaFilter(val) {
             filterDelDneva = (filterDelDneva === val) ? '' : val;
-            // Vizualno označi aktiven gumb v sidebaru
             document.querySelectorAll('.sidebar-time-btn').forEach(function(btn) {
                 btn.classList.toggle('sidebar-link-active', btn.dataset.filter === filterDelDneva);
             });
             renderHabits();
         }
 
-        // filterByKategorija: filter navad po kategoriji (iz sidebara)
         function filterByKategorija(name) {
             filterKategorija = (filterKategorija === name) ? '' : name;
-            // Sinhronizacija z dropdown v top navu
             const sel = document.getElementById('filterKategorija');
             if (sel) sel.value = filterKategorija;
-            // Vizualno označi aktiven element
             document.querySelectorAll('.sidebar-kat-link').forEach(function(a) {
                 a.classList.toggle('sidebar-link-active', a.dataset.kat === filterKategorija);
             });
             renderHabits();
         }
 
-        // openNovaKategorija: pokaže/skrije mini formo za dodajanje kategorije
         function openNovaKategorija() {
             const form = document.getElementById('novaKategorijaPanel');
             if (form) form.classList.toggle('active');
         }
 
-        // Pošlji novo kategorijo na strežnik
         var novaKatForm = document.getElementById('novaKategorijaFormEl');
         if (novaKatForm) {
             novaKatForm.addEventListener('submit', function(e) {
@@ -768,20 +648,18 @@ if ($isLoggedIn) {
                 .then(function(d) {
                     if (d.success) {
                         const label = ime.charAt(0).toUpperCase() + ime.slice(1);
-                        // Dodaj v filter dropdown zgoraj
                         const sel = document.getElementById('filterKategorija');
                         if (sel) {
                             const opt = document.createElement('option');
                             opt.value = ime; opt.textContent = label;
                             sel.appendChild(opt);
                         }
-                        // Dodaj v select v formi za navado
                         const habSel = document.getElementById('habitKategorijaSelect');
                         if (habSel) {
                             const opt2 = document.createElement('option');
                             opt2.value = ime; opt2.textContent = label;
                             habSel.appendChild(opt2);
-                            habSel.value = ime; // takoj izberi novo kategorijo
+                            habSel.value = ime;
                         }
                         document.getElementById('novaKatIme').value = '';
                         document.getElementById('novaKategorijaPanel').classList.remove('active');
@@ -792,7 +670,6 @@ if ($isLoggedIn) {
             });
         }
 
-        // Hamburger – odpri/zapri sidebar na mobilnih napravah
         document.getElementById('hamburgerBtn').addEventListener('click', function(e) {
             e.stopPropagation();
             document.getElementById('layout').classList.toggle('sidebar-open');
@@ -804,13 +681,11 @@ if ($isLoggedIn) {
             e.stopPropagation();
         });
 
-        // Filtriranje ob tipkanju v iskalno polje
         document.getElementById('searchInput').addEventListener('input', function() {
             searchQuery = this.value;
             renderHabits();
         });
 
-        // Zapolni dropdown kategorij iz vseh kategorij uporabnika (ne samo tistih z navadami)
         (function populateKategorijeFilter() {
             const sel = document.getElementById('filterKategorija');
             kategorijeData.forEach(kat => {
@@ -821,17 +696,15 @@ if ($isLoggedIn) {
             });
         })();
 
-        // Filtriranje ob spremembi kategorije
         document.getElementById('filterKategorija').addEventListener('change', function() {
             filterKategorija = this.value;
             renderHabits();
         });
 
         // ===================================================
-        // INICIALIZACIJA — zažene se ob nalaganju strani
+        // INICIALIZACIJA
         // ===================================================
-        renderHabits(); // izriše seznam navad
-        // Če obstajajo navade, samodejno odpre prvo (boljša UX)
+        renderHabits();
         if (habits.length > 0) selectHabit(habits[0].id_navade);
     </script>
 </body>
